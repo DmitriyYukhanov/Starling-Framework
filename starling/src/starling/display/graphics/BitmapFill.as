@@ -6,6 +6,8 @@ package starling.display.graphics
 	import flash.display3D.IndexBuffer3D;
 	import flash.display3D.textures.Texture;
 	import flash.display3D.VertexBuffer3D;
+	import flash.geom.Matrix;
+	import flash.geom.Point;
 	import starling.display.materials.IMaterial;
 	import starling.display.materials.StandardMaterial;
 	import starling.display.shaders.fragment.TextureVertexColorFragmentShader;
@@ -16,15 +18,18 @@ package starling.display.graphics
 	public class BitmapFill implements IGraphicsData, IFill
 	{
 		private var vertices		:Vector.<Vertex>;
+		private var material		:IMaterial;
+		public	var matrix			:Matrix;
+		private var bitmapData		:BitmapData;
+		
 		private var vertexBuffer	:VertexBuffer3D;
 		private var indexBuffer		:IndexBuffer3D;
-		private var material		:IMaterial;
 		private var texture			:Texture;
 		
-		private var _bitmapData		:BitmapData;
-		
-		public function BitmapFill()
+		public function BitmapFill( bitmapData:BitmapData, matrix:Matrix = null )
 		{
+			this.bitmapData = bitmapData;
+			this.matrix = matrix == null ? new Matrix() : matrix;
 			vertices = new Vector.<Vertex>
 			material = new StandardMaterial(Starling.context, new RippleVertexShader(), new TextureVertexColorFragmentShader(texture));
 		}
@@ -49,20 +54,6 @@ package starling.display.graphics
 			}
 		}
 		
-		public function set bitmapData( value:BitmapData ):void
-		{
-			if ( texture )
-			{
-				texture.dispose();
-			}
-			_bitmapData = value;
-		}
-		
-		public function get bitmapData():BitmapData
-		{
-			return _bitmapData;
-		}
-		
 		public function addVertex( x:Number, y:Number, r:Number, g:Number, b:Number, a:Number, u:Number, v:Number ):void
 		{
 			if ( vertexBuffer )
@@ -77,9 +68,17 @@ package starling.display.graphics
 				indexBuffer = null;
 			}
 			
+			if ( u == -1 )
+			{
+				u = x / bitmapData.width;
+			}
+			if ( v == -1 )
+			{
+				v = y / bitmapData.height;
+			}
 			
-			
-			vertices.push( new Vertex( x, y, 0, r, g, b, a, u, v ) );
+			var transformedUVs:Point = matrix.transformPoint(new Point(u, v));
+			vertices.push( new Vertex( x, y, 0, r, g, b, a, transformedUVs.x, transformedUVs.y ) );
 		}
 		
 		public function render( renderSupport:RenderSupport, alpha:Number ):void
