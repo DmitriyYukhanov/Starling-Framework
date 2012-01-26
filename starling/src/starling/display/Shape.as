@@ -6,6 +6,7 @@ package starling.display
 	import flash.geom.Rectangle;
 	import starling.core.RenderSupport;
 	import starling.display.DisplayObject;
+	import starling.display.graphics.ColorFill;
 	import starling.display.graphics.IGraphicsData;
 	import starling.display.graphics.IFill;
 	import starling.display.graphics.BitmapFill;
@@ -51,10 +52,15 @@ package starling.display
 			penPositionPrev = new Point();
 		}
 		
-		public function beginBitmapFill( bitmapData:BitmapData, m:Matrix = null, smoothing:Boolean = false ):void
+		public function beginBitmapFill( bitmapData:BitmapData, m:Matrix = null ):void
 		{
-			currentFill = new BitmapFill();
-			BitmapFill(currentFill).bitmapData = bitmapData;
+			currentFill = new BitmapFill(bitmapData, m);
+			graphicsData.push(currentFill);
+		}
+		
+		public function beginFill():void
+		{
+			currentFill = new ColorFill();
 			graphicsData.push(currentFill);
 		}
 		
