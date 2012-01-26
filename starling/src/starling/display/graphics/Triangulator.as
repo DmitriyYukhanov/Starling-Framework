@@ -12,8 +12,14 @@ package starling.display.graphics
 			var openList:Vector.<Vertex> = vertices.slice();
 			
 			var currentIndex:int = 0;
+			var iter:int = 0;
 			while ( openList.length > 2 )
 			{
+				iter++;
+				if ( iter > 5000 )
+				{
+					break;
+				}
 				currentIndex = currentIndex % openList.length;
 				
 				if ( openList.length == 3 )
