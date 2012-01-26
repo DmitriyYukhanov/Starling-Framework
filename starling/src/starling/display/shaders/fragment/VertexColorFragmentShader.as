@@ -7,7 +7,7 @@ package starling.display.shaders.fragment
 	{
 		public function VertexColorFragmentShader()
 		{
-			var agal:String = "mov oc, v1"
+			var agal:String = "mov oc, v0"
 			compileAGAL( Context3DProgramType.FRAGMENT, agal );
 		}
 	}
