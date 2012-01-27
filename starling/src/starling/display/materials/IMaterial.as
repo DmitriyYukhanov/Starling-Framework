@@ -6,6 +6,7 @@ package starling.display.materials
 	import flash.geom.Matrix3D;
 	import flash.utils.ByteArray;
 	import starling.display.shaders.IShader;
+	import starling.textures.Texture;
 	
 	public interface IMaterial
 	{
@@ -13,6 +14,8 @@ package starling.display.materials
 		function get vertexShader():IShader;
 		function set fragmentShader( value:IShader ):void
 		function get fragmentShader():IShader;
+		function get textures():Vector.<Texture>;
+		function set textures(value:Vector.<Texture>):void;
 		function drawTriangles( context:Context3D, matrix:Matrix3D, vertexBuffer:VertexBuffer3D, indexBuffer:IndexBuffer3D ):void;
 	}
 	

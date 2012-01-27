@@ -6,18 +6,36 @@ package
 	import flash.geom.Matrix;
 	import flash.geom.Point;
 	import starling.core.Starling;
+	import starling.display.graphics.Fill;
+	import starling.display.graphics.Stroke;
+	import starling.display.materials.StandardMaterial;
+	import starling.display.shaders.fragment.TextureVertexColorFragmentShader;
+	import starling.display.shaders.vertex.RippleVertexShader;
+	import starling.display.shaders.vertex.StandardVertexShader;
+	import starling.display.Shape;
 	import starling.events.Event;
 	import starling.display.Sprite;
-	import starling.display.Shape;
+	import starling.textures.Texture;
+	//import starling.display.Shape;
 	
 	public class StarlingMain extends Sprite
 	{
 		[Embed( source = "/assets/Checker.png" )]
 		private var CheckerBMP		:Class;
+		[Embed( source = "/assets/Rock.png" )]
+		private var RockBMP		:Class;
+		[Embed( source = "/assets/Grass.png" )]
+		private var GrassBMP		:Class;
 		
 		private var shape			:Shape;
 		
+		private var currentPoint	:Point;
 		private var prevPoint		:Point;
+		
+		private var distance		:Number;
+		
+		//private var fill			:Fill;
+		//private var stroke			:Stroke;
 		
 		public function StarlingMain()
 		{
@@ -27,18 +45,21 @@ package
 		private function onAdded ( e:Event ):void
 		{
 			shape = new Shape();
-			//shape.rotation = Math.PI * 0.25;
-			//shape.x = stage.stageWidth * 0.5;
-			//shape.y = stage.stageHeight * 0.5;
-			
 			addChild(shape);
 			
-			var checkerBitmap:Bitmap = new CheckerBMP();
-			var m:Matrix = new Matrix();
-			m.rotate(Math.PI * 0.25);
-			//shape.beginBitmapFill( checkerBitmap.bitmapData, m );
 			
+			//fill = new Fill();
+			//fill.material = new StandardMaterial( new StandardVertexShader(), new TextureVertexColorFragmentShader() );
+			//fill.material.textures[0] = Texture.fromBitmap( new RockBMP(), false );
+			//addChild(fill);
 			
+			//stroke = new Stroke();
+			//stroke.material = new StandardMaterial( new StandardVertexShader(), new TextureVertexColorFragmentShader() );
+			//stroke.material.textures[0] = Texture.fromBitmap( new GrassBMP(), false );
+			//addChild(stroke);
+		
+			currentPoint = new Point();
+			prevPoint = new Point();
 			
 			Starling.current.nativeStage.addEventListener(MouseEvent.MOUSE_DOWN, mouseDownHandler);
 			Starling.current.nativeStage.addEventListener(KeyboardEvent.KEY_DOWN, keyDownHandler);
@@ -53,10 +74,17 @@ package
 		
 		private function mouseDownHandler( event:MouseEvent ):void
 		{
-			prevPoint = new Point( Starling.current.nativeStage.mouseX, Starling.current.nativeStage.mouseY );
+			currentPoint.x =  Starling.current.nativeStage.mouseX;
+			currentPoint.y =  Starling.current.nativeStage.mouseY;
+			prevPoint.x = currentPoint.x;
+			prevPoint.y = currentPoint.y;
 			
-			shape.beginFill();
-			shape.lineTo( prevPoint.x, prevPoint.y, Math.random(), Math.random(), Math.random() );
+			distance = 0;
+			
+			var m:Matrix = new Matrix( 1, 0, 0, 1, currentPoint.x, currentPoint.y );
+			m.scale(0.5, 0.5);
+			shape.beginTexturedFill( Texture.fromBitmap( new RockBMP(), false ), m );
+			shape.beginTexturedStroke( Texture.fromBitmap( new GrassBMP(), false ) );
 			
 			Starling.current.nativeStage.addEventListener(MouseEvent.MOUSE_MOVE, mouseMoveHandler);
 			Starling.current.nativeStage.addEventListener(MouseEvent.MOUSE_UP, mouseUpHandler);
@@ -64,20 +92,35 @@ package
 		
 		private function mouseMoveHandler( event:MouseEvent ):void
 		{
-			var dx:Number = Starling.current.nativeStage.mouseX - prevPoint.x;
-			var dy:Number = Starling.current.nativeStage.mouseY - prevPoint.y;
-			if ( dx * dx + dy * dy > 20 )
+			currentPoint.x += (Starling.current.nativeStage.mouseX - currentPoint.x) * 1;
+			currentPoint.y += (Starling.current.nativeStage.mouseY - currentPoint.y) * 1;
+				
+			var dx:Number = currentPoint.x - prevPoint.x;
+			var dy:Number = currentPoint.y - prevPoint.y;
+			var d:Number = Math.sqrt( dx * dx + dy * dy );
+			
+			if ( d > 10 )
 			{
-				prevPoint = new Point( Starling.current.nativeStage.mouseX, Starling.current.nativeStage.mouseY );
-				shape.lineTo( prevPoint.x, prevPoint.y, Math.random(), Math.random(), Math.random() );
+				distance += d;
+				
+				prevPoint.x = currentPoint.x;
+				prevPoint.y = currentPoint.y;
+				
+				
+				var thickness:Number = 30 + Math.random() * 30;
+				//var color:Number = 0.5 + Math.random() * 0.5;
+				
+				shape.lineTo( currentPoint.x, currentPoint.y, thickness );
 			}
 		}
 		
 		private function mouseUpHandler( event:MouseEvent ):void
 		{
 			shape.endFill();
+			shape.endStroke();
 			Starling.current.nativeStage.removeEventListener(MouseEvent.MOUSE_MOVE, mouseMoveHandler);
 			Starling.current.nativeStage.removeEventListener(MouseEvent.MOUSE_UP, mouseUpHandler);
 		}
+		
 	}
 }

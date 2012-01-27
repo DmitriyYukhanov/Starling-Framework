@@ -6,34 +6,23 @@ package starling.display
 	import flash.geom.Rectangle;
 	import starling.core.RenderSupport;
 	import starling.display.DisplayObject;
-	import starling.display.graphics.ColorFill;
-	import starling.display.graphics.IGraphicsData;
-	import starling.display.graphics.IFill;
-	import starling.display.graphics.BitmapFill;
+	import starling.display.graphics.Fill;
+	import starling.display.graphics.Stroke;
+	import starling.display.shaders.fragment.TextureVertexColorFragmentShader;
+	import starling.textures.Texture;
 	
-	public class Shape extends DisplayObject
+	public class Shape extends DisplayObjectContainer
 	{
 		private var penPositionPrev	:Point;
 		private var penPosition		:Point;
-		private var graphicsData	:Vector.<IGraphicsData>
 		
-		private var currentFill		:IFill;
+		private var currentFill		:Fill;
+		private var currentStroke	:Stroke;
 		
 		public function Shape()
 		{
-			graphicsData = new Vector.<IGraphicsData>();
 			penPosition = new Point();
 			penPositionPrev = new Point();
-		}
-		
-		override public function dispose():void
-		{
-			super.dispose();
-			for ( var i:int = 0; i < graphicsData.length; i++ )
-			{
-				graphicsData[i].dispose();
-			}
-			graphicsData = null;
 		}
 		
 		override public function getBounds(targetSpace:DisplayObject, resultRect:Rectangle=null):Rectangle
@@ -43,30 +32,57 @@ package starling.display
 		
 		public function clear():void
 		{
-			for ( var i:int = 0; i < graphicsData.length; i++ )
+			while ( numChildren > 0 )
 			{
-				graphicsData[i].dispose();
+				var child:DisplayObject = getChildAt(0);
+				child.dispose();
+				removeChildAt(0);
 			}
-			graphicsData = new Vector.<IGraphicsData>();
-			penPosition = new Point();
-			penPositionPrev = new Point();
 		}
 		
-		public function beginBitmapFill( bitmapData:BitmapData, m:Matrix = null ):void
+		public function beginStroke( closed:Boolean = false ):Stroke
 		{
-			currentFill = new BitmapFill(bitmapData, m);
-			graphicsData.push(currentFill);
+			currentStroke = new Stroke();
+			addChild(currentStroke);
+			return currentStroke;
 		}
 		
-		public function beginFill():void
+		public function beginTexturedStroke( texture:Texture, closed:Boolean = false ):Stroke
 		{
-			currentFill = new ColorFill();
-			graphicsData.push(currentFill);
+			currentStroke = new Stroke();
+			currentStroke.material.fragmentShader = new TextureVertexColorFragmentShader();
+			currentStroke.material.textures[0] = texture;
+			addChild(currentStroke);
+			return currentStroke;
+		}
+		
+		public function endStroke():void
+		{
+			currentStroke = null;
+		}
+		
+		public function beginFill():Fill
+		{
+			currentFill = new Fill()
+			addChild(currentFill);
+			return currentFill;
+		}
+		
+		public function beginTexturedFill( texture:Texture, m:Matrix = null ):Fill
+		{
+			currentFill = new Fill()
+			currentFill.material.fragmentShader = new TextureVertexColorFragmentShader();
+			currentFill.material.textures[0] = texture;
+			if ( m )
+			{
+				currentFill.matrix = m;
+			}
+			addChild(currentFill);
+			return currentFill;
 		}
 		
 		public function endFill():void
 		{
-			if ( !currentFill ) return;
 			currentFill = null;
 		}
 		
@@ -78,7 +94,7 @@ package starling.display
 			penPosition.y = y;
 		}
 		
-		public function lineTo( x:Number, y:Number, r:Number = 1, g:Number = 1, b:Number = 1, a:Number = 1, u:Number = -1, v:Number = -1 ):void
+		public function lineTo( x:Number, y:Number, thickness:Number = 1, r:Number = 1, g:Number = 1, b:Number = 1, a:Number = 1, r2:Number = 1, g2:Number = 1, b2:Number = 1, a2:Number = 1 ):void
 		{
 			penPositionPrev.x = penPosition.x;
 			penPositionPrev.y = penPosition.y;
@@ -87,15 +103,12 @@ package starling.display
 			
 			if ( currentFill )
 			{
-				currentFill.addVertex( x, y, r, g, b, a, u, v );
+				currentFill.addVertex( x, y, r, g, b, a );
 			}
-		}
-		
-		override public function render(support:RenderSupport, alpha:Number):void
-		{
-			for ( var i:int = 0; i < graphicsData.length; i++ )
+			
+			if ( currentStroke )
 			{
-				graphicsData[i].render(support, alpha);
+				currentStroke.addVertex( x, y, thickness, r, g, b, a, r2, g2, b2, a2 );
 			}
 		}
 	}

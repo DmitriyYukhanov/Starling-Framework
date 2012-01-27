@@ -7,22 +7,13 @@ package starling.display.shaders.fragment
 	
 	public class TextureFragmentShader extends AbstractShader
 	{
-		public var texture		:Texture;
-		
-		public function TextureFragmentShader( texture:Texture )
+		public function TextureFragmentShader()
 		{
-			this.texture = texture;
-			
 			var agal:String =
 			"tex ft1, v1, fs0 <2d, repeat, linear> \n" +
 			"mov oc, ft1"
 			
 			compileAGAL( Context3DProgramType.FRAGMENT, agal );
-		}
-		
-		override public function setConstants( context:Context3D, firstRegister:int ):void
-		{
-			context.setTextureAt(0, texture);
 		}
 	}
 }

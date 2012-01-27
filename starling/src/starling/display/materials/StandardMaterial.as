@@ -4,6 +4,7 @@ package starling.display.materials
 	import starling.display.shaders.fragment.VertexColorFragmentShader;
 	import starling.display.shaders.IShader;
 	import starling.display.shaders.vertex.StandardVertexShader;
+	import starling.textures.Texture;
 	
 	import flash.display3D.Context3D;
 	import flash.display3D.Context3DProgramType;
@@ -19,11 +20,23 @@ package starling.display.materials
 		
 		private var _vertexShader	:IShader;
 		private var _fragmentShader	:IShader;
+		private var _textures		:Vector.<Texture>;
 		
-		public function StandardMaterial( context:Context3D, vertexShader:IShader = null, fragmentShader:IShader = null )
+		public function StandardMaterial( vertexShader:IShader = null, fragmentShader:IShader = null )
 		{
 			this.vertexShader = vertexShader || new StandardVertexShader();
 			this.fragmentShader = fragmentShader || new VertexColorFragmentShader();
+			textures = new Vector.<Texture>();
+		}
+		
+		public function set textures( value:Vector.<Texture> ):void
+		{
+			_textures = value;
+		}
+		
+		public function get textures():Vector.<Texture>
+		{
+			return _textures;
 		}
 		
 		public function set vertexShader( value:IShader ):void
@@ -69,9 +82,15 @@ package starling.display.materials
 			}
 			context.setProgram(program);
 			
-			_vertexShader.setConstants(context, 4);
-			_fragmentShader.setConstants(context, 0);
+			for ( var i:int = 0; i < 8; i++ )
+			{
+				context.setTextureAt( i, i < _textures.length ? _textures[i].base : null );
+			}
+			
 			context.setProgramConstantsFromMatrix(Context3DProgramType.VERTEX, 0, matrix, true);
+			_vertexShader.setConstants(context, 4);
+			
+			_fragmentShader.setConstants(context, 0);
 			
 			context.drawTriangles(indexBuffer);
 		}

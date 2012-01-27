@@ -18,6 +18,11 @@ package
 			mStarling = new Starling(StarlingMain, stage);
 			mStarling.antiAliasing = 1;
 			mStarling.start();
+			
+			//graphics.lineStyle(20, 0xFFFFFF);
+			//graphics.moveTo(100, 100);
+			//graphics.lineTo(200, 100);
+			//graphics.lineTo(300, 200);
 		}
 	}
 }

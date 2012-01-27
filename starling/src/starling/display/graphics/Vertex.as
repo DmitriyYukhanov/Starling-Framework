@@ -29,7 +29,7 @@ package starling.display.graphics
 		
 		public function clone():Vertex
 		{
-			return new Vertex(x, y, z, u, v, r, g, b, a);
+			return new Vertex(x, y, z, r, g, b, a, u, v);
 		}
 	}
 }

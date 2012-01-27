@@ -1,12 +1,95 @@
 package starling.display.graphics
 {
+	import flash.display.BitmapData;
+	import flash.display.DisplayObject;
+	import flash.display3D.Context3DTextureFormat;
 	import flash.display3D.IndexBuffer3D;
+	import flash.display3D.VertexBuffer3D;
+	import flash.geom.Matrix;
+	import flash.geom.Point;
 	import flash.geom.Rectangle;
-	import flash.utils.Dictionary;
-
-	public class Triangulator
+	import starling.core.RenderSupport;
+	import starling.core.Starling;
+	import starling.display.materials.IMaterial;
+	import starling.display.materials.StandardMaterial;
+	import starling.display.shaders.fragment.TextureVertexColorFragmentShader;
+	import starling.display.shaders.vertex.StandardVertexShader;
+	import starling.textures.Texture;
+	
+	public class Fill extends Graphic
 	{
-		public static function triangulate( vertices:Vector.<Vertex> ):Vector.<uint>
+		protected var vertices	:Vector.<Vertex>;
+		protected var _matrix	:Matrix;
+		
+		public function Fill()
+		{
+			vertices = new Vector.<Vertex>();
+			_matrix = new Matrix();
+		}
+		
+		public function set matrix( value:Matrix ):void
+		{
+			_matrix = value;
+		}
+		
+		public function get matrix():Matrix
+		{
+			return _matrix;
+		}
+		
+		public function addVertex( x:Number, y:Number, r:Number = 1, g:Number = 1, b:Number = 1, a:Number = 1 ):void
+		{
+			if ( vertexBuffer )
+			{
+				vertexBuffer.dispose();
+				vertexBuffer = null;
+			}
+			
+			if ( indexBuffer )
+			{
+				indexBuffer.dispose();
+				indexBuffer = null;
+			}
+			
+			var textureCoordinate:Point = new Point(x, y)
+			
+			var textures:Vector.<Texture> = _material.textures;
+			if ( textures.length > 0 )
+			{
+				textureCoordinate.x /= textures[0].width;
+				textureCoordinate.y /= textures[0].height;
+				
+				var invert:Matrix = _matrix.clone();
+				invert.invert();
+				textureCoordinate = invert.transformPoint(textureCoordinate);
+				
+				
+				
+				//u = x / textures[0].width;
+				//v = y / textures[0].height;
+			}
+			
+			vertices.push( new Vertex( x, y, 0, 1, 1, 1, 1, textureCoordinate.x, textureCoordinate.y ) );
+		}
+			
+		override public function render( renderSupport:RenderSupport, alpha:Number ):void
+		{
+			if ( vertices.length < 3 ) return;
+			
+			if ( vertexBuffer == null )
+			{
+				var indices:Vector.<uint> = triangulate(vertices);
+				if ( indices.length < 3 ) return;
+				vertexBuffer = Starling.context.createVertexBuffer( vertices.length, Vertex.STRIDE );
+				vertexBuffer.uploadFromVector( VertexUtil.flattenVertices(vertices), 0, vertices.length )
+				indexBuffer = Starling.context.createIndexBuffer( indices.length );
+				indexBuffer.uploadFromVector( indices, 0, indices.length );
+			}
+			
+			super.render( renderSupport, alpha );
+		}
+		
+		private static function triangulate( vertices:Vector.<Vertex> ):Vector.<uint>
 		{
 			var indices:Vector.<uint> = new Vector.<uint>();
 			var openList:Vector.<Vertex> = vertices.slice();
@@ -75,22 +158,6 @@ package starling.display.graphics
 			}
 			
 			return indices;
-		}
-		
-		public static function explode(vertices:Vector.<Vertex>, indices:Vector.<uint>, outputVertices:Vector.<Vertex>, outputIndices:Vector.<uint> ):Boolean
-		{
-			if ( indices.length % 3 != 0 )
-			{
-				throw( new Error( "Supplied indicies not multiple of three" ) );
-				return false;
-			}
-			
-			for ( var i:int = 0; i < indices.length; i += 3 )
-			{
-				outputVertices.push(vertices[indices[i]].clone() , vertices[indices[i + 1]].clone(), vertices[indices[i + 2]].clone());
-				outputIndices.push( i, i + 1, i + 2 );
-			}
-			return true;
 		}
 		
 		private static function isLeft(v0x:Number, v0y:Number, v1x:Number, v1y:Number, px:Number, py:Number):Boolean

@@ -1,10 +1,10 @@
-package starling.geom
+package starling.display.graphics
 {
-	public class Plane
+	import starling.core.RenderSupport;
+	public class Plane extends Graphic
 	{
-		public var vertices:Vector.<Number>;
-		public var indices:Vector.<uint>;
-		
+		private var vertices		:Vector.<Number>;
+		private var indices			:Vector.<uint>
 		private var _width			:Number;
 		private var _height			:Number;
 		private var _numVerticesX	:uint;
@@ -46,16 +46,6 @@ package starling.geom
 			{
 				indices.push( i, i+1, i+_numVerticesX+1, i+_numVerticesX+1, i+_numVerticesX, i );
 			}
-		}
-		
-		public function get numVertices():int
-		{
-			return _numVerticesX * _numVerticesY;
-		}
-		
-		public function get numTriangles():int
-		{
-			return ((_numVerticesX-1) * (_numVerticesY-1)) * 2;
 		}
 	}
 }
