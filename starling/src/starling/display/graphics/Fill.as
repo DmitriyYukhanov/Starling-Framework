@@ -18,12 +18,12 @@ package starling.display.graphics
 	
 	public class Fill extends Graphic
 	{
-		protected var vertices	:Vector.<Vertex>;
+		protected var vertices	:Vector.<Number>;
 		protected var _matrix	:Matrix;
 		
 		public function Fill()
 		{
-			vertices = new Vector.<Vertex>();
+			vertices = new Vector.<Number>();
 			_matrix = new Matrix();
 		}
 		
@@ -69,19 +69,23 @@ package starling.display.graphics
 				//v = y / textures[0].height;
 			}
 			
-			vertices.push( new Vertex( x, y, 0, 1, 1, 1, 1, textureCoordinate.x, textureCoordinate.y ) );
+			vertices.push( x, y, 0, 1, 1, 1, 1, textureCoordinate.x, textureCoordinate.y );
 		}
 			
 		override public function render( renderSupport:RenderSupport, alpha:Number ):void
 		{
-			if ( vertices.length < 3 ) return;
+			if ( vertices.length < Vertex.STRIDE * 3 ) return;
 			
 			if ( vertexBuffer == null )
 			{
-				var indices:Vector.<uint> = triangulate(vertices);
+				var triangulatedData:Array = triangulate(vertices);
+				var renderVertices:Vector.<Number> = triangulatedData[0];
+				var indices:Vector.<uint> = triangulatedData[1];
+				
 				if ( indices.length < 3 ) return;
-				vertexBuffer = Starling.context.createVertexBuffer( vertices.length, Vertex.STRIDE );
-				vertexBuffer.uploadFromVector( VertexUtil.flattenVertices(vertices), 0, vertices.length )
+				var numVertices:int = renderVertices.length / Vertex.STRIDE;
+				vertexBuffer = Starling.context.createVertexBuffer( numVertices, Vertex.STRIDE );
+				vertexBuffer.uploadFromVector( renderVertices, 0, numVertices )
 				indexBuffer = Starling.context.createIndexBuffer( indices.length );
 				indexBuffer.uploadFromVector( indices, 0, indices.length );
 			}
@@ -89,75 +93,125 @@ package starling.display.graphics
 			super.render( renderSupport, alpha );
 		}
 		
-		private static function triangulate( vertices:Vector.<Vertex> ):Vector.<uint>
+		private static function triangulate( vertices:Vector.<Number> ):Array
 		{
-			var indices:Vector.<uint> = new Vector.<uint>();
-			var openList:Vector.<Vertex> = vertices.slice();
+			var numVertices:int = vertices.length / Vertex.STRIDE;
+			var numTriangles:int = numVertices - 2;
+			var numIndices:int = numTriangles * 3;
 			
-			var currentIndex:int = 0;
+			var outputVertices:Vector.<Number> = new Vector.<Number>();
+			var outputIndices:Vector.<uint> = new Vector.<uint>();
+			
+			var vertexList:VertexList = VertexList.build(vertices, Vertex.STRIDE);
+			
+			var wn:int = windingNumber(vertexList);
+			if ( windingNumber( vertexList ) < 0 )
+			{
+				VertexList.reverse(vertexList);
+			}
+			
+			
 			var iter:int = 0;
-			while ( openList.length > 2 )
+			var currentNode:VertexList = vertexList.head;
+			while ( true )
 			{
 				iter++;
-				if ( iter > 5000 )
+				if ( iter > numTriangles*2 )
 				{
 					break;
 				}
-				currentIndex = currentIndex % openList.length;
 				
-				if ( openList.length == 3 )
+				var n0:VertexList = currentNode.prev;
+				var n1:VertexList = currentNode;
+				var n2:VertexList = currentNode.next;
+				
+				// If vertex list is 3 long.
+				if ( n2.next == n0)
 				{
-					//trace( "making triangle : " + vertices.indexOf(openList[0]) + ", " + vertices.indexOf(openList[1]) + ", " + vertices.indexOf(openList[2]) );
-					indices.push( vertices.indexOf(openList[0]), vertices.indexOf(openList[1]), vertices.indexOf(openList[2]) );
-					//trace("finished");
+					//trace( "making triangle : " + n0.index + ", " + n1.index + ", " + n2.index );
+					outputIndices.push( n0.index, n1.index, n2.index );
 					break;
 				}
-					
-				var previousIndex:int = currentIndex ==  0 ? openList.length - 1 : currentIndex - 1;
-				var nextIndex:int = currentIndex == openList.length - 1 ? 0 : currentIndex + 1;
-				var v0:Vertex = openList[previousIndex];
-				var v1:Vertex = openList[currentIndex];
-				var v2:Vertex = openList[nextIndex];
+				
+				var v0x:Number = n0.vertex[0];
+				var v0y:Number = n0.vertex[1];
+				var v1x:Number = n1.vertex[0];
+				var v1y:Number = n1.vertex[1];
+				var v2x:Number = n2.vertex[0];
+				var v2y:Number = n2.vertex[1];
 				
 				
-				//trace( "testing triangle : " + vertices.indexOf(v0) + ", " + vertices.indexOf(v1) + ", " + vertices.indexOf(v2) );
+				//trace( "testing triangle : " + n0.index + ", " + n1.index + ", " + n2.index );
 				
-				if ( isReflex( v0.x, v0.y, v1.x, v1.y, v2.x, v2.y ) == false )
+				if ( isReflex( v0x, v0y, v1x, v1y, v2x, v2y ) == false )
 				{
-					//trace("index is not reflex. Skipping. " +vertices.indexOf(v1));
-					currentIndex++;
+					//trace("index is not reflex. Skipping. " + n1.index);
+					currentNode = currentNode.next;
 					continue;
 				}
 				
-				var startIndex:int = nextIndex + 1 == openList.length ? 0 : nextIndex + 1;
-				var L:int = openList.length - 3;
+				var startNode:VertexList = n2.next;
+				var n:VertexList = startNode;
 				var found:Boolean = false;
-				for ( var i:int = 0; i < L; i++ )
+				while ( n != n0 )
 				{
-					var index:int = (startIndex + i) % openList.length;
-					var v:Vertex = openList[index];
-					//trace("Testing if point is in triangle : " + vertices.indexOf(v));
-					
-					if ( isPointInTriangle(v0.x, v0.y, v1.x, v1.y, v2.x, v2.y, v.x, v.y) )
+					//trace("Testing if point is in triangle : " + n.index);
+					if ( isPointInTriangle(v0x, v0y, v1x, v1y, v2x, v2y, n.vertex[0], n.vertex[1]) )
 					{
 						found = true;
 						break;
 					}
+					n = n.next;
 				}
+				
 				if ( found )
 				{
 					//trace("Point found in triangle. Skipping");
-					currentIndex++;
+					currentNode = currentNode.next;
 					continue;
 				}
 				
-				//trace( "making triangle : " + vertices.indexOf(v0) + ", " + vertices.indexOf(v1) + ", " + vertices.indexOf(v2) );
-				indices.push( vertices.indexOf(v0), vertices.indexOf(v1), vertices.indexOf(v2) );
-				//trace( "removing vertex : " +vertices.indexOf(v1) );
-				openList.splice( currentIndex, 1 );
+				//trace( "making triangle : " + n0.index + ", " + n1.index + ", " + n2.index );
+				outputIndices.push( n0.index, n1.index, n2.index );
+				//trace( "removing vertex : " + n1.index );
+				if ( n1 == n1.head )
+				{
+					n1.vertex = n2.vertex;
+					n1.next = n2.next;
+					n1.index = n2.index;
+					n1.next.prev = n1;
+					VertexList.releaseNode( n2 );
+				}
+				else
+				{
+					n0.next = n2;
+					n2.prev = n0;
+					VertexList.releaseNode( n1 );
+				}
+				
+				currentNode = n0;
 			}
+			//while ( currentNode != vertexList.head )
 			
-			return indices;
+			//trace("finished");
+			//trace("");
+			
+			return [vertices, outputIndices];
+		}
+		
+		private static function windingNumber( vertexList:VertexList ):int
+		{
+			var wn:int = 0;
+			var node:VertexList = vertexList.head;
+			do
+			{
+				var isLeftResult:Boolean = isLeft( node.vertex[0], node.vertex[1], node.next.vertex[0], node.next.vertex[1], node.next.next.vertex[0], node.next.next.vertex[1] );
+				wn += isLeftResult ? -1 : 1;
+				node = node.next;
+			}
+			while ( node != vertexList.head )
+			
+			return wn;
 		}
 		
 		private static function isLeft(v0x:Number, v0y:Number, v1x:Number, v1y:Number, px:Number, py:Number):Boolean

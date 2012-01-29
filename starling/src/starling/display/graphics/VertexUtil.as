@@ -3,18 +3,14 @@ package starling.display.graphics
 	public class VertexUtil
 	{
 		
-		static public function flattenVertices( vertices:Vector.<Vertex> ):Vector.<Number>
+		static public function flattenVertices( vertices:Vector.<Vertex>, outputVertices:Vector.<Number> ):void
 		{
-			var output:Vector.<Number> = new Vector.<Number>();
-			
 			var L:int = vertices.length;
 			for ( var i:int = 0; i < L; i++ )
 			{
 				var vertex:Vertex = vertices[i];
-				output.push( vertex.x, vertex.y, vertex.z, vertex.r, vertex.g, vertex.b, vertex.a, vertex.u, vertex.v );
+				outputVertices.push( vertex.x, vertex.y, vertex.z, vertex.r, vertex.g, vertex.b, vertex.a, vertex.u, vertex.v );
 			}
-			
-			return output;
 		}
 		
 		private static const EPSILON:Number = 0.0000001
