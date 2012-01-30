@@ -34,6 +34,8 @@ package
 		
 		private var distance		:Number;
 		
+		private var rockTexture		:Texture;
+		
 		//private var fill			:Fill;
 		//private var stroke			:Stroke;
 		
@@ -47,6 +49,7 @@ package
 			shape = new Shape();
 			addChild(shape);
 			
+			rockTexture = Texture.fromBitmap( new RockBMP(), false );
 			
 			//fill = new Fill();
 			//fill.material = new StandardMaterial( new StandardVertexShader(), new TextureVertexColorFragmentShader() );
@@ -61,8 +64,31 @@ package
 			currentPoint = new Point();
 			prevPoint = new Point();
 			
+			
+			//addEventListener(Event.ENTER_FRAME, enterFrameHandler);
+			
 			Starling.current.nativeStage.addEventListener(MouseEvent.MOUSE_DOWN, mouseDownHandler);
 			Starling.current.nativeStage.addEventListener(KeyboardEvent.KEY_DOWN, keyDownHandler);
+		}
+		private var numFrames:int = 0;
+		private function enterFrameHandler( event:Event ):void
+		{
+			shape.clear();
+			
+			//shape.beginStroke(true);
+			shape.beginTexturedFill( rockTexture );
+			for ( var i:int = 0; i < 3 * 100; i++ )
+			{
+				var thickness:Number = 30 + Math.random() * 30;
+				shape.lineTo( Math.random() * Starling.current.nativeStage.stageWidth, Math.random() * Starling.current.nativeStage.stageHeight, thickness );
+			}
+			
+			numFrames++;
+			if ( numFrames == 500 )
+			{
+				trace("Finished");
+				removeEventListener(Event.ENTER_FRAME, enterFrameHandler);
+			}
 		}
 		
 		private function keyDownHandler( event:KeyboardEvent ):void
@@ -83,8 +109,12 @@ package
 			
 			var m:Matrix = new Matrix( 1, 0, 0, 1, currentPoint.x, currentPoint.y );
 			m.scale(0.5, 0.5);
+			m.translate(Math.random() * stage.stageWidth, Math.random() * stage.stageHeight);
 			shape.beginTexturedFill( Texture.fromBitmap( new RockBMP(), false ), m );
 			shape.beginTexturedStroke( Texture.fromBitmap( new GrassBMP(), false ) );
+			
+			var thickness:Number = 30 + Math.random() * 30;
+			shape.lineTo( currentPoint.x, currentPoint.y, thickness );
 			
 			Starling.current.nativeStage.addEventListener(MouseEvent.MOUSE_MOVE, mouseMoveHandler);
 			Starling.current.nativeStage.addEventListener(MouseEvent.MOUSE_UP, mouseUpHandler);
@@ -99,17 +129,14 @@ package
 			var dy:Number = currentPoint.y - prevPoint.y;
 			var d:Number = Math.sqrt( dx * dx + dy * dy );
 			
-			if ( d > 10 )
+			if ( d > 20 )
 			{
 				distance += d;
 				
 				prevPoint.x = currentPoint.x;
 				prevPoint.y = currentPoint.y;
 				
-				
 				var thickness:Number = 30 + Math.random() * 30;
-				//var color:Number = 0.5 + Math.random() * 0.5;
-				
 				shape.lineTo( currentPoint.x, currentPoint.y, thickness );
 			}
 		}

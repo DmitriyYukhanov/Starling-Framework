@@ -14,6 +14,8 @@ package starling.display.graphics
 	
 	public class Stroke extends Graphic
 	{
+		public static const VERTEX_STRIDE	:int = 9;
+		
 		protected var vertices	:Vector.<StrokeVertex>;
 		protected var _closed 	:Boolean = false;
 		
@@ -64,8 +66,8 @@ package starling.display.graphics
 				createPolyLine(vertices, _closed, renderVertices, indices );
 				
 				if ( indices.length < 3 ) return;
-				vertexBuffer = Starling.context.createVertexBuffer( renderVertices.length / Vertex.STRIDE, Vertex.STRIDE );
-				vertexBuffer.uploadFromVector( renderVertices, 0, renderVertices.length / Vertex.STRIDE )
+				vertexBuffer = Starling.context.createVertexBuffer( renderVertices.length / VERTEX_STRIDE, VERTEX_STRIDE );
+				vertexBuffer.uploadFromVector( renderVertices, 0, renderVertices.length / VERTEX_STRIDE )
 				indexBuffer = Starling.context.createIndexBuffer( indices.length );
 				indexBuffer.uploadFromVector( indices, 0, indices.length );
 			}
@@ -78,28 +80,9 @@ package starling.display.graphics
 			var numVertices:int = vertices.length;
 			for ( var i:int = 0; i < numVertices; i++ )
 			{
-				var v0:StrokeVertex;
 				var v1:StrokeVertex = vertices[i];
-				var v2:StrokeVertex;
-				
-				if ( i > 0 )
-				{
-					v0 = vertices[i - 1];
-				}
-				else
-				{
-					v0 = StrokeVertex(v1.clone());
-					
-				}
-				
-				if ( i < numVertices - 1 )
-				{
-					v2 = vertices[i + 1];
-				}
-				else
-				{
-					v2 = StrokeVertex(v1.clone());
-				}
+				var v0:StrokeVertex = i > 0 ? vertices[i - 1] : StrokeVertex(v1.clone());
+				var v2:StrokeVertex = i < numVertices-1 ? vertices[i + 1] : StrokeVertex(v1.clone());
 				
 				var d0x:Number = v1.x - v0.x;
 				var d0y:Number = v1.y - v0.y;
@@ -166,22 +149,65 @@ package starling.display.graphics
 		private static const EPSILON:Number = 0.0000001
 		static public function intersection( a0x:Number, a0y:Number, a1x:Number, a1y:Number, b0x:Number, b0y:Number, b1x:Number, b1y:Number ):Array
 		{
-			var ux:Number = (a1x + EPSILON) - (a0x + EPSILON);
-			var uy:Number = (a1y + EPSILON) - (a0y + EPSILON);
+			var ux:Number = a1x - a0x;
+			var uy:Number = a1y - a0y;
 			
-			var vx:Number = (b1x + EPSILON) - (b0x + EPSILON);
-			var vy:Number = (b1y + EPSILON) - (b0y + EPSILON);
+			var vx:Number = b1x - b0x;
+			var vy:Number = b1y - b0y;
 			
-			var wx:Number = (a0x + EPSILON) - (b0x + EPSILON);
-			var wy:Number = (a0y + EPSILON) - (b0y + EPSILON);
+			var wx:Number = a0x - b0x;
+			var wy:Number = a0y - b0y;
 			
 			var D:Number = ux * vy - uy * vx
 			if (Math.abs(D) < EPSILON) return [a0x, a0y];
-			
 			var t:Number = (vx * wy - vy * wx) / D
-			
 			return [ a0x + t * (a1x - a0x), a0y + t * (a1y - a0y) ];
 		}
 	}
+}
 
+internal class StrokeVertex
+{
+	public var x	:Number;
+	public var y	:Number;
+	public var z	:Number;
+	public var r	:Number;
+	public var g	:Number;
+	public var b	:Number;
+	public var a	:Number;
+	public var u	:Number;
+	public var v	:Number;
+	
+	public var thickness:Number;
+	public var r2:Number;
+	public var g2:Number;
+	public var b2:Number;
+	public var a2:Number;
+	
+	public function StrokeVertex( 	x:Number = 0, y:Number = 0, z:Number = 0,
+									r:Number = 1, g:Number = 1, b:Number = 1, a:Number = 1,
+									r2:Number = 1, g2:Number = 1, b2:Number = 1, a2:Number = 1,
+									u:Number = 0, v:Number = 0,
+									thickness:Number = 1 )
+	{
+		this.x = x;
+		this.y = y;
+		this.z = z;
+		this.u = u;
+		this.v = v;
+		this.r = r;
+		this.g = g;
+		this.b = b;
+		this.a = a;
+		this.r2 = r2;
+		this.g2 = g2;
+		this.b2 = b2;
+		this.a2 = a2;
+		this.thickness = thickness;
+	}
+	
+	public function clone():StrokeVertex
+	{
+		return new StrokeVertex(x, y, z, r, g, b, a, r2, g2, b2, a2, u, v);
+	}
 }
