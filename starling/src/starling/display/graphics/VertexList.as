@@ -1,6 +1,6 @@
-package starling.display.graphics 
+package starling.display.graphics
 {
-	public class VertexList 
+	public final class VertexList
 	{
 		public var vertex:Vector.<Number>;
 		public var next:VertexList;
@@ -8,9 +8,48 @@ package starling.display.graphics
 		public var index:int;
 		public var head	:VertexList;
 		
-		public function VertexList() 
+		public function VertexList()
 		{
 			
+		}
+		
+		static public function clone( vertexList:VertexList ):VertexList
+		{
+			var newHead:VertexList;
+			
+			var currentNode:VertexList = vertexList.head;
+			var currentClonedNode:VertexList;
+			do
+			{
+				var newClonedNode:VertexList
+				if ( newHead == null )
+				{
+					newClonedNode = newHead = getNode();
+				}
+				else
+				{
+					newClonedNode = getNode();
+				}
+				
+				newClonedNode.head = newHead;
+				newClonedNode.index = currentNode.index;
+				newClonedNode.vertex = currentNode.vertex;
+				newClonedNode.prev = currentClonedNode;
+				
+				if ( currentClonedNode )
+				{
+					currentClonedNode.next = newClonedNode;
+				}
+				currentClonedNode = newClonedNode;
+				
+				currentNode = currentNode.next;
+			}
+			while ( currentNode != currentNode.head )
+			
+			currentClonedNode.next = newHead;
+			newHead.prev = currentClonedNode;
+			
+			return newHead;
 		}
 		
 		static public function reverse( vertexList:VertexList ):void
@@ -26,42 +65,10 @@ package starling.display.graphics
 			}
 			while ( node != vertexList.head )
 		}
-			
-		static public function build( vertices:Vector.<Number>, stride:int ):VertexList
-		{
-			var head:VertexList;
-			
-			var numVertices:int = vertices.length / stride;
-			var prevNode:VertexList = head;
-			for ( var i:int = 0; i < numVertices; i++ )
-			{
-				var node:VertexList = getNode();
-				if ( head == null )
-				{
-					head = node;
-				}
-				node.vertex = vertices.slice(i * stride, i * stride + stride);
-				node.head = head;
-				node.prev = prevNode;
-				node.index = i;
-				
-				if ( prevNode )
-				{
-					prevNode.next = node;
-				}
-				
-				prevNode = node;
-			}
-			
-			head.prev = node;
-			node.next = head;
-			
-			return head;
-		}
 		
 		static public function dispose( node:VertexList ):void
 		{
-			while ( node.head )
+			while ( node && node.head )
 			{
 				releaseNode(node);
 				var temp:VertexList = node.next;
