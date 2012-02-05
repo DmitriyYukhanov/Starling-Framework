@@ -1,15 +1,7 @@
 package starling.display.graphics
 {
-	import flash.display3D.IndexBuffer3D;
-	import flash.display3D.VertexBuffer3D;
 	import starling.core.RenderSupport;
 	import starling.core.Starling;
-	import starling.display.materials.IMaterial;
-	import starling.display.materials.StandardMaterial;
-	import starling.display.shaders.fragment.VertexColorFragmentShader;
-	import starling.display.shaders.IShader;
-	import starling.display.shaders.vertex.RippleVertexShader;
-	import starling.display.shaders.vertex.StandardVertexShader;
 	import starling.textures.Texture;
 	
 	public class Stroke extends Graphic
@@ -25,8 +17,8 @@ package starling.display.graphics
 		}
 		
 		public function addVertex( 	x:Number, y:Number, thickness:Number = 1,
-									r:Number = 1,  g:Number = 1,  b:Number = 1,  a:Number = 1,
-									r2:Number = 1, g2:Number = 1, b2:Number = 1, a2:Number = 1 ):void
+									color0:uint = 0xFFFFFF,  alpha0:Number = 1,
+									color1:uint = 0xFFFFFF, alpha1:Number = 1 ):void
 		{
 			if ( vertexBuffer )
 			{
@@ -51,12 +43,19 @@ package starling.display.graphics
 				u = prevVertex.u + (d / textures[0].width);
 			}
 			
-			vertices.push( new StrokeVertex( x, y, 0, r, g, b, a, r2, g2, b2, a2, u, 0, thickness ) );
+			var r0:Number = (color0 >> 16) / 255;
+			var g0:Number = ((color0 & 0x00FF00) >> 8) / 255;
+			var b0:Number = (color0 & 0x0000FF) / 255;
+			var r1:Number = (color1 >> 16) / 255;
+			var g1:Number = ((color1 & 0x00FF00) >> 8) / 255;
+			var b1:Number = (color1 & 0x0000FF) / 255;
+			
+			vertices.push( new StrokeVertex( x, y, 0, r0, g0, b0, alpha0, r1, g1, b1, alpha1, u, 0, thickness ) );
 		}
 		
 		override public function render( renderSupport:RenderSupport, alpha:Number ):void
 		{
-			if ( vertices.length < 3 ) return;
+			if ( vertices.length < 2 ) return;
 			
 			if ( vertexBuffer == null )
 			{
@@ -135,8 +134,8 @@ package starling.display.graphics
 				
 				var i1:Array = intersection(p1x, p1y, p1x +d0x, p1y + d0y, p3x, p3y, p3x + d1x, p3y + d1y );
 				
-				outputVertices.push(i0[0], i0[1], v1.z, v1.r, v1.g, v1.b, v1.a, v1.u, 1 );
-				outputVertices.push(i1[0], i1[1], v1.z, v1.r2, v1.g2, v1.b2, v1.a2, v1.u, 0 );
+				outputVertices.push(i0[0], i0[1], v1.z, v1.r2, v1.g2, v1.b2, v1.a2, v1.u, 1 );
+				outputVertices.push(i1[0], i1[1], v1.z, v1.r, v1.g, v1.b, v1.a, v1.u, 0 );
 				
 				if ( i < numVertices - 1 )
 				{

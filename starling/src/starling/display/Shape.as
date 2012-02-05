@@ -8,6 +8,7 @@ package starling.display
 	import starling.display.DisplayObject;
 	import starling.display.graphics.Fill;
 	import starling.display.graphics.Stroke;
+	import starling.display.materials.IMaterial;
 	import starling.display.shaders.fragment.TextureVertexColorFragmentShader;
 	import starling.textures.Texture;
 	
@@ -16,11 +17,15 @@ package starling.display
 		private var penPositionPrev	:Point;
 		private var penPosition		:Point;
 		
+		private var penDown			:Boolean = false;
 		private var currentFill		:Fill;
 		private var currentStroke	:Stroke;
 		
-		public function Shape()
+		private var showProfiling	:Boolean;
+		
+		public function Shape( showProfiling:Boolean = false )
 		{
+			this.showProfiling = showProfiling
 			penPosition = new Point();
 			penPositionPrev = new Point();
 		}
@@ -63,19 +68,19 @@ package starling.display
 		
 		public function beginFill():Fill
 		{
-			currentFill = new Fill()
+			currentFill = new Fill(showProfiling)
 			addChild(currentFill);
 			return currentFill;
 		}
 		
 		public function beginTexturedFill( texture:Texture, m:Matrix = null ):Fill
 		{
-			currentFill = new Fill()
+			currentFill = new Fill(showProfiling)
 			currentFill.material.fragmentShader = new TextureVertexColorFragmentShader();
 			currentFill.material.textures[0] = texture;
 			if ( m )
 			{
-				currentFill.matrix = m;
+				currentFill.uvMatrix = m;
 			}
 			addChild(currentFill);
 			return currentFill;
@@ -88,13 +93,22 @@ package starling.display
 		
 		public function moveTo( x:Number, y:Number ):void
 		{
+			if ( currentStroke )
+			{
+				var material:IMaterial = currentStroke.material;
+				endStroke();
+				beginStroke();
+				currentStroke.material = material;
+			}
+			endFill();
 			penPositionPrev.x = penPosition.x;
 			penPositionPrev.y = penPosition.y;
 			penPosition.x = x;
 			penPosition.y = y;
+			penDown = false;
 		}
 		
-		public function lineTo( x:Number, y:Number, thickness:Number = 1, r:Number = 1, g:Number = 1, b:Number = 1, a:Number = 1, r2:Number = 1, g2:Number = 1, b2:Number = 1, a2:Number = 1 ):void
+		public function lineTo( x:Number, y:Number, thickness:Number = 1, color1:uint = 0xFFFFFF, alpha1:Number = 1, color2:uint = 0xFFFFFF, alpha2:Number = 1 ):void
 		{
 			penPositionPrev.x = penPosition.x;
 			penPositionPrev.y = penPosition.y;
@@ -103,13 +117,25 @@ package starling.display
 			
 			if ( currentFill )
 			{
-				currentFill.addVertex( x, y, r, g, b, a );
+				currentFill.addVertex( x, y, color1, alpha1 );
 			}
+			
 			
 			if ( currentStroke )
 			{
-				currentStroke.addVertex( x, y, thickness, r, g, b, a, r2, g2, b2, a2 );
+				if ( penDown == false )
+				{
+					penDown = true;
+					currentStroke.addVertex( penPositionPrev.x, penPositionPrev.y, thickness, color1, alpha1, color2, alpha2 );
+				}
+				
+				currentStroke.addVertex( x, y, thickness, color1, alpha1, color2, alpha2 );
 			}
+		}
+		
+		override public function render( renderSupport:RenderSupport, alpha:Number ):void
+		{
+			super.render(renderSupport, alpha);
 		}
 	}
 }

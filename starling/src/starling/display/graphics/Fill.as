@@ -1,6 +1,5 @@
 package starling.display.graphics
 {
-	import adobe.utils.CustomActions;
 	import flash.geom.Matrix;
 	import flash.geom.Point;
 	import flash.utils.getTimer;
@@ -13,33 +12,41 @@ package starling.display.graphics
 		public static const VERTEX_STRIDE	:int = 9;
 		
 		protected var vertices		:VertexList;
-		protected var _matrix		:Matrix;
+		protected var _uvMatrix		:Matrix;
 		protected var numVertices	:int = 0;
 		
-		public function Fill()
+		public var showProfiling	:Boolean;
+		
+		public function Fill( showProfiling:Boolean = false )
 		{
-			_matrix = new Matrix();
+			_uvMatrix = new Matrix();
+			this.showProfiling = showProfiling;
 		}
 		
-		override public function dispose():void
+		public function clear():void
 		{
-			super.dispose();
 			numVertices = 0;
 			VertexList.dispose(vertices);
 			vertices = null;
 		}
 		
-		public function set matrix( value:Matrix ):void
+		override public function dispose():void
 		{
-			_matrix = value;
+			super.dispose();
+			clear();
 		}
 		
-		public function get matrix():Matrix
+		public function set uvMatrix( value:Matrix ):void
 		{
-			return _matrix;
+			_uvMatrix = value;
 		}
 		
-		public function addVertex( x:Number, y:Number, r:Number = 1, g:Number = 1, b:Number = 1, a:Number = 1 ):void
+		public function get uvMatrix():Matrix
+		{
+			return _uvMatrix;
+		}
+		
+		public function addVertex( x:Number, y:Number, color:uint = 0xFFFFFF, alpha:Number = 1 ):void
 		{
 			if ( vertexBuffer )
 			{
@@ -61,12 +68,16 @@ package starling.display.graphics
 				textureCoordinate.x /= textures[0].width;
 				textureCoordinate.y /= textures[0].height;
 				
-				var invert:Matrix = _matrix.clone();
+				var invert:Matrix = _uvMatrix.clone();
 				invert.invert();
 				textureCoordinate = invert.transformPoint(textureCoordinate);
 			}
 			
-			var vertex:Vector.<Number> = Vector.<Number>( [ x, y, 0, 1, 1, 1, 1, textureCoordinate.x, textureCoordinate.y ]);
+			var r:Number = (color >> 16) / 255;
+			var g:Number = ((color & 0x00FF00) >> 8) / 255;
+			var b:Number = (color & 0x0000FF) / 255;
+			
+			var vertex:Vector.<Number> = Vector.<Number>( [ x, y, 0, r, g, b, alpha, textureCoordinate.x, textureCoordinate.y ]);
 			var node:VertexList = VertexList.getNode();
 			if ( numVertices == 0 )
 			{
@@ -86,7 +97,6 @@ package starling.display.graphics
 		}
 		
 		private static var times:Vector.<int> = new Vector.<int>();
-		
 		override public function render( renderSupport:RenderSupport, alpha:Number ):void
 		{
 			if ( numVertices < 3) return;
@@ -95,19 +105,22 @@ package starling.display.graphics
 			{
 				var startTime:int = getTimer();
 				var triangulatedData:Array = triangulate(vertices, numVertices);
-				var timeTaken:int = getTimer() - startTime;
-				times.push(timeTaken);
-				//if ( times.length > 1000 )
-				//{
-					//times.shift();
-				//}
-				var average:Number = 0;
-				for each ( var time:int in times )
+				if ( showProfiling )
 				{
-					average += time;
+					var timeTaken:int = getTimer() - startTime;
+					times.push(timeTaken);
+					if ( times.length > 1000 )
+					{
+						times.shift();
+					}
+					var average:Number = 0;
+					for each ( var time:int in times )
+					{
+						average += time;
+					}
+					average /= times.length;
+					trace("Fill.triangulate() - average : " + int(average))
 				}
-				average /= times.length;
-				trace("average : " + int(average))
 				
 				var renderVertices:Vector.<Number> = triangulatedData[0];
 				var indices:Vector.<uint> = triangulatedData[1];

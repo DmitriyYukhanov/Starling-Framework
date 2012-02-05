@@ -64,7 +64,12 @@ package starling.display.graphics
 		
 		override public function render( renderSupport:RenderSupport, alpha:Number ):void
 		{
-			Starling.context.setBlendFactors(Context3DBlendFactor.SOURCE_ALPHA, Context3DBlendFactor.ONE_MINUS_SOURCE_ALPHA);
+			var pma:Boolean = false;
+			if ( material.textures.length > 0 && material.textures[0].premultipliedAlpha )
+			{
+				pma = true;
+			}
+			RenderSupport.setDefaultBlendFactors(pma);
 			_material.drawTriangles( Starling.context, renderSupport.mvpMatrix, vertexBuffer, indexBuffer );
 		}
 	}
