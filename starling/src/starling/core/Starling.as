@@ -14,17 +14,18 @@ package starling.core
     import flash.display.Stage3D;
     import flash.display3D.Context3D;
     import flash.display3D.Program3D;
+    import flash.errors.IllegalOperationError;
     import flash.events.ErrorEvent;
     import flash.events.Event;
     import flash.events.KeyboardEvent;
     import flash.events.MouseEvent;
     import flash.events.TouchEvent;
-    import flash.geom.Point;
     import flash.geom.Rectangle;
     import flash.text.TextField;
     import flash.text.TextFieldAutoSize;
     import flash.text.TextFormat;
     import flash.text.TextFormatAlign;
+    import flash.ui.Mouse;
     import flash.ui.Multitouch;
     import flash.ui.MultitouchInputMode;
     import flash.utils.ByteArray;
@@ -34,6 +35,7 @@ package starling.core
     import starling.animation.Juggler;
     import starling.display.DisplayObject;
     import starling.display.Stage;
+    import starling.events.EventDispatcher;
     import starling.events.ResizeEvent;
     import starling.events.TouchPhase;
     import starling.events.TouchProcessor;
@@ -97,12 +99,23 @@ package starling.core
      *  where most of us are working with a conventional mouse and keyboard, Starling can simulate 
      *  multitouch events with the help of the "Shift" and "Ctrl" (Mac: "Cmd") keys. Activate
      *  this feature by enabling the <code>simulateMultitouch</code> property.</p>
-     *
+     *  
+     *  <strong>Handling a lost render context</strong>
+     *  
+     *  <p>On some operating systems and under certain conditions (e.g. returning from system
+     *  sleep), Starling's stage3D render context may be lost. Starling can recover from a lost
+     *  context if the class property "handleLostContext" is set to "true". Keep in mind, however, 
+     *  that this comes at the price of increased memory consumption; Starling will cache textures 
+     *  in RAM to be able to restore them when the context is lost.</p> 
+     *  
+     *  <p>In case you want to react to a context loss, Starling dispatches an event with
+     *  the type "Event.CONTEXT3D_CREATE" when the context is restored. You can recreate any 
+     *  invalid resources in a corresponding event listener.</p>
      */ 
-    public class Starling
+    public class Starling extends EventDispatcher
     {
         /** The version of the Starling framework. */
-        public static const VERSION:String = "0.9.1";
+        public static const VERSION:String = "1.0";
         
         // members
         
@@ -127,6 +140,7 @@ package starling.core
         private var mPrograms:Dictionary;
         
         private static var sCurrent:Starling;
+        private static var sHandleLostContext:Boolean;
         
         // construction
         
@@ -164,6 +178,7 @@ package starling.core
             mEnableErrorChecking = false;
             mLastFrameTimestamp = getTimer() / 1000.0;
             mPrograms = new Dictionary();
+            mSupport  = new RenderSupport();
             
             // register touch/mouse event handlers            
             for each (var touchEventType:String in touchEventTypes)
@@ -209,13 +224,11 @@ package starling.core
         
         private function initializeGraphicsAPI():void
         {
-            if (mContext) return;
-            
             mContext = mStage3D.context3D;
             mContext.enableErrorChecking = mEnableErrorChecking;
-            updateViewPort();
+            mPrograms = new Dictionary();
             
-            mSupport = new RenderSupport();
+            updateViewPort();
             
             trace("[Starling] Initialization complete.");
             trace("[Starling] Display Driver:" + mContext.driverInfo);
@@ -241,7 +254,8 @@ package starling.core
         
         private function render():void
         {
-            if (mContext == null) return;
+            if (mContext == null || mContext.driverInfo == "Disposed")
+                return;
             
             var now:Number = getTimer() / 1000.0;
             var passedTime:Number = now - mLastFrameTimestamp;
@@ -251,8 +265,8 @@ package starling.core
             mJuggler.advanceTime(passedTime);
             mTouchProcessor.advanceTime(passedTime);
             
+            RenderSupport.clear(mStage.color, 1.0);
             mSupport.setOrthographicProjection(mStage.stageWidth, mStage.stageHeight);
-            mSupport.clear(mStage.color, 1.0);
             
             mStage.render(mSupport, 1.0);
 
@@ -319,11 +333,19 @@ package starling.core
         
         private function onContextCreated(event:Event):void
         {
+            if (!Starling.handleLostContext && mContext)
+            {
+                showFatalError("Fatal error: The application lost the device context!");
+                stop();
+                return;
+            }
+            
             makeCurrent();
             
             initializeGraphicsAPI();
-            initializeRoot();
+            dispatchEvent(new starling.events.Event(starling.events.Event.CONTEXT3D_CREATE));
             
+            initializeRoot();
             mTouchProcessor.simulateMultitouch = mSimulateMultitouch;
         }
         
@@ -401,8 +423,9 @@ package starling.core
         
         private function get touchEventTypes():Array
         {
-            return [ TouchEvent.TOUCH_BEGIN, TouchEvent.TOUCH_MOVE, TouchEvent.TOUCH_END,
-                     MouseEvent.MOUSE_DOWN,  MouseEvent.MOUSE_MOVE, MouseEvent.MOUSE_UP ];
+            return Mouse.supportsCursor || !multitouchEnabled ?
+                [ MouseEvent.MOUSE_DOWN,  MouseEvent.MOUSE_MOVE, MouseEvent.MOUSE_UP ] :
+                [ TouchEvent.TOUCH_BEGIN, TouchEvent.TOUCH_MOVE, TouchEvent.TOUCH_END ];  
         }
         
         // program management
@@ -539,6 +562,19 @@ package starling.core
         {            
             Multitouch.inputMode = value ? MultitouchInputMode.TOUCH_POINT :
                                            MultitouchInputMode.NONE;
+        }
+        
+        /** Indicates if Starling should automatically recover from a lost device context.
+         *  On some systems, an upcoming screensaver or entering sleep mode may invalidate the
+         *  render context. This setting indicates if Starling should recover from such incidents.
+         *  Beware that this has a huge impact on memory consumption! @default false */
+        public static function get handleLostContext():Boolean { return sHandleLostContext; }
+        public static function set handleLostContext(value:Boolean):void 
+        {
+            if (sCurrent != null) throw new IllegalOperationError(
+                "Setting must be changed before Starling instance is created");
+            else
+                sHandleLostContext = value;
         }
     }
 }
